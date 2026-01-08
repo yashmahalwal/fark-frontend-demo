@@ -9,6 +9,9 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  optimizeDeps: {
+    include: ['@apollo/client'],
+  },
   server: {
     port: 5173,
     proxy: {

@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import {
   Box,
   Typography,
-  TextField,
   Button,
   Table,
   TableBody,
@@ -11,123 +10,117 @@ import {
   TableHead,
   TableRow,
   Paper,
+  CircularProgress,
+  Alert,
+  Chip,
+  Card,
   IconButton,
   Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
-  MenuItem,
-  Alert,
-  CircularProgress,
-  Chip,
+  TextField,
+  FormControlLabel,
+  Switch,
   AlertTitle,
-  Card,
 } from '@mui/material';
-import { Edit, Delete, Add, Refresh } from '@mui/icons-material';
+import { Refresh, Edit, Delete, Add } from '@mui/icons-material';
 import { useQuery, useMutation } from '@apollo/client';
-import { GET_USERS, CREATE_USER, UPDATE_USER, DELETE_USER } from '@/api/graphql';
-import { UserStatus, PaymentMethod } from '@/types/models';
+import { GET_PRODUCTS, CREATE_PRODUCT, UPDATE_PRODUCT, DELETE_PRODUCT } from '@/api/graphql';
+import { Product } from '@/types/models';
 import { useRefresh } from '@/contexts/RefreshContext';
 
-export function GraphQLUserComponent() {
-  const { registerUsersRefresh } = useRefresh();
+export function GraphQLProductsComponent() {
+  const { registerProductsRefresh } = useRefresh();
   const [openDialog, setOpenDialog] = useState(false);
-  const [editingUser, setEditingUser] = useState<any | null>(null);
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [formData, setFormData] = useState({
-    email: '',
     name: '',
-    status: UserStatus.ACTIVE,
-    description: '',
-    tags: '',
-    paymentMethod: 'CREDIT_CARD' as PaymentMethod,
+    price: 0,
+    category: '',
+    inStock: true,
+    specifications: [] as any[],
   });
 
-  const { data, loading, error, refetch } = useQuery(GET_USERS);
-  const [createUser, { loading: creating, error: createError }] = useMutation(CREATE_USER, {
-    refetchQueries: [{ query: GET_USERS }],
+  const { data, loading, error, refetch } = useQuery(GET_PRODUCTS);
+  const [createProduct, { loading: creating, error: createError }] = useMutation(CREATE_PRODUCT, {
+    refetchQueries: [{ query: GET_PRODUCTS }],
   });
-  const [updateUser, { loading: updating, error: updateError }] = useMutation(UPDATE_USER, {
-    refetchQueries: [{ query: GET_USERS }],
+  const [updateProduct, { loading: updating, error: updateError }] = useMutation(UPDATE_PRODUCT, {
+    refetchQueries: [{ query: GET_PRODUCTS }],
   });
-  const [deleteUserMutation, { loading: deleting, error: deleteError }] = useMutation(DELETE_USER, {
-    refetchQueries: [{ query: GET_USERS }],
+  const [deleteProductMutation, { loading: deleting, error: deleteError }] = useMutation(DELETE_PRODUCT, {
+    refetchQueries: [{ query: GET_PRODUCTS }],
   });
 
   useEffect(() => {
-    registerUsersRefresh(() => {
+    registerProductsRefresh(() => {
       refetch();
     });
-  }, [registerUsersRefresh, refetch]);
+  }, [registerProductsRefresh, refetch]);
 
   const handleOpenCreate = () => {
-    setEditingUser(null);
+    setEditingProduct(null);
     setFormData({
-      email: '',
       name: '',
-      status: UserStatus.ACTIVE,
-      description: '',
-      tags: '',
-      paymentMethod: 'CREDIT_CARD' as PaymentMethod,
+      price: 0,
+      category: '',
+      inStock: true,
+      specifications: [],
     });
     setOpenDialog(true);
   };
 
-  const handleOpenEdit = (user: any) => {
-    setEditingUser(user);
+  const handleOpenEdit = (product: Product) => {
+    setEditingProduct(product);
     setFormData({
-      email: user.email,
-      name: user.name,
-      status: user.status,
-      description: user.description || '',
-      tags: user.tags?.join(', ') || '',
-      paymentMethod: 'CREDIT_CARD' as PaymentMethod,
+      name: product.name,
+      price: product.price,
+      category: product.category,
+      inStock: product.inStock,
+      specifications: product.specifications,
     });
     setOpenDialog(true);
   };
 
   const handleCloseDialog = () => {
     setOpenDialog(false);
-    setEditingUser(null);
+    setEditingProduct(null);
   };
 
   const handleSave = async () => {
     try {
       const variables = {
-        ...(editingUser && { id: editingUser.id }),
-        email: formData.email,
+        ...(editingProduct && { id: editingProduct.id }),
         name: formData.name,
-        status: formData.status,
-        description: formData.description || undefined,
-        metadata: {},
-        tags: formData.tags.split(',').map(t => t.trim()).filter(t => t),
-        paymentMethod: {
-          type: 'Visa',
-          last4: '1234',
-        },
+        price: formData.price,
+        category: formData.category,
+        inStock: formData.inStock,
+        specifications: formData.specifications,
       };
 
-      if (editingUser) {
-        await updateUser({ variables });
+      if (editingProduct) {
+        await updateProduct({ variables });
       } else {
-        await createUser({ variables });
+        await createProduct({ variables });
       }
       handleCloseDialog();
     } catch (err: any) {
-      console.error('Failed to save user:', err);
+      console.error('Failed to save product:', err);
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!window.confirm('Are you sure you want to delete this user?')) return;
+    if (!window.confirm('Are you sure you want to delete this product?')) return;
     
     try {
-      await deleteUserMutation({ variables: { id } });
+      await deleteProductMutation({ variables: { id } });
     } catch (err: any) {
-      console.error('Failed to delete user:', err);
+      console.error('Failed to delete product:', err);
     }
   };
 
-  const users = data?.users || [];
+  const products = data?.products || [];
   const isLoading = loading || creating || updating || deleting;
   const mutationError = createError || updateError || deleteError;
 
@@ -135,7 +128,7 @@ export function GraphQLUserComponent() {
     <Card elevation={2}>
       <Box sx={{ p: 3 }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-          <Typography variant="h5" sx={{ fontWeight: 600 }}>Users - GraphQL API</Typography>
+          <Typography variant="h5" sx={{ fontWeight: 600 }}>Products - GraphQL API</Typography>
           <Box>
             <Button
               variant="outlined"
@@ -152,7 +145,7 @@ export function GraphQLUserComponent() {
               onClick={handleOpenCreate}
               disabled={isLoading}
             >
-              Create User
+              Create Product
             </Button>
           </Box>
         </Box>
@@ -185,7 +178,7 @@ export function GraphQLUserComponent() {
           </Alert>
         )}
 
-        {loading && !users.length ? (
+        {loading && !products.length ? (
           <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
             <CircularProgress />
           </Box>
@@ -195,39 +188,31 @@ export function GraphQLUserComponent() {
               <TableHead>
                 <TableRow sx={{ bgcolor: 'grey.100' }}>
                   <TableCell sx={{ fontWeight: 600 }}>ID</TableCell>
-                  <TableCell sx={{ fontWeight: 600 }}>Email</TableCell>
                   <TableCell sx={{ fontWeight: 600 }}>Name</TableCell>
-                  <TableCell sx={{ fontWeight: 600 }}>Status</TableCell>
-                  <TableCell sx={{ fontWeight: 600 }}>Description</TableCell>
-                  <TableCell sx={{ fontWeight: 600 }}>Tags</TableCell>
+                  <TableCell sx={{ fontWeight: 600 }}>Price</TableCell>
+                  <TableCell sx={{ fontWeight: 600 }}>Category</TableCell>
+                  <TableCell sx={{ fontWeight: 600 }}>Stock</TableCell>
                   <TableCell align="right" sx={{ fontWeight: 600 }}>Actions</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
-                {users.map((user: any) => (
-                  <TableRow key={user.id} hover>
-                    <TableCell>{user.id}</TableCell>
-                    <TableCell>{user.email}</TableCell>
-                    <TableCell>{user.name}</TableCell>
+                {products.map((product: Product) => (
+                  <TableRow key={product.id} hover>
+                    <TableCell>{product.id}</TableCell>
+                    <TableCell>{product.name}</TableCell>
+                    <TableCell>${product.price}</TableCell>
+                    <TableCell>{product.category}</TableCell>
                     <TableCell>
                       <Chip
-                        label={user.status}
-                        color={
-                          user.status === UserStatus.ACTIVE
-                            ? 'success'
-                            : user.status === UserStatus.INACTIVE
-                            ? 'default'
-                            : 'warning'
-                        }
+                        label={product.inStock ? 'In Stock' : 'Out of Stock'}
+                        color={product.inStock ? 'success' : 'error'}
                         size="small"
                       />
                     </TableCell>
-                    <TableCell>{user.description || 'N/A'}</TableCell>
-                    <TableCell>{user.tags?.join(', ') || 'None'}</TableCell>
                     <TableCell align="right">
                       <IconButton
                         color="primary"
-                        onClick={() => handleOpenEdit(user)}
+                        onClick={() => handleOpenEdit(product)}
                         disabled={isLoading}
                         size="small"
                       >
@@ -235,7 +220,7 @@ export function GraphQLUserComponent() {
                       </IconButton>
                       <IconButton
                         color="error"
-                        onClick={() => handleDelete(user.id)}
+                        onClick={() => handleDelete(product.id.toString())}
                         disabled={isLoading}
                         size="small"
                       >
@@ -250,16 +235,9 @@ export function GraphQLUserComponent() {
         )}
 
         <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="sm" fullWidth>
-          <DialogTitle>{editingUser ? 'Edit User' : 'Create User'}</DialogTitle>
+          <DialogTitle>{editingProduct ? 'Edit Product' : 'Create Product'}</DialogTitle>
           <DialogContent>
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
-              <TextField
-                label="Email"
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                fullWidth
-                required
-              />
               <TextField
                 label="Name"
                 value={formData.name}
@@ -268,52 +246,35 @@ export function GraphQLUserComponent() {
                 required
               />
               <TextField
-                select
-                label="Status"
-                value={formData.status}
-                onChange={(e) => setFormData({ ...formData, status: e.target.value as UserStatus })}
+                label="Price"
+                type="number"
+                value={formData.price}
+                onChange={(e) => setFormData({ ...formData, price: parseFloat(e.target.value) || 0 })}
                 fullWidth
                 required
-              >
-                {Object.values(UserStatus).map((status) => (
-                  <MenuItem key={status} value={status}>
-                    {status}
-                  </MenuItem>
-                ))}
-              </TextField>
-              <TextField
-                label="Description"
-                value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                fullWidth
-                multiline
-                rows={2}
               />
               <TextField
-                label="Tags (comma-separated)"
-                value={formData.tags}
-                onChange={(e) => setFormData({ ...formData, tags: e.target.value })}
-                fullWidth
-                placeholder="tag1, tag2, tag3"
-              />
-              <TextField
-                select
-                label="Payment Method"
-                value={formData.paymentMethod}
-                onChange={(e) => setFormData({ ...formData, paymentMethod: e.target.value as PaymentMethod })}
+                label="Category"
+                value={formData.category}
+                onChange={(e) => setFormData({ ...formData, category: e.target.value })}
                 fullWidth
                 required
-              >
-                <MenuItem value="CREDIT_CARD">CREDIT_CARD</MenuItem>
-                <MenuItem value="DEBIT_CARD">DEBIT_CARD</MenuItem>
-                <MenuItem value="PAYPAL">PAYPAL</MenuItem>
-              </TextField>
+              />
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={formData.inStock}
+                    onChange={(e) => setFormData({ ...formData, inStock: e.target.checked })}
+                  />
+                }
+                label="In Stock"
+              />
             </Box>
           </DialogContent>
           <DialogActions>
             <Button onClick={handleCloseDialog}>Cancel</Button>
             <Button onClick={handleSave} variant="contained" disabled={isLoading}>
-              {isLoading ? 'Saving...' : editingUser ? 'Update' : 'Create'}
+              {isLoading ? 'Saving...' : editingProduct ? 'Update' : 'Create'}
             </Button>
           </DialogActions>
         </Dialog>
